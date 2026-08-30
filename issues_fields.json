@@ -1,0 +1,19 @@
+[
+  {"type":"auto_number","name":"Issue ID","description":"自动编号 ISSUE-0001","style":{"rules":[{"type":"text","text":"ISSUE-"},{"type":"incremental_number","length":4}]}},
+  {"type":"text","name":"标题","description":"问题标题"},
+  {"type":"text","name":"Skill名称","description":"出问题的 Skill 名称"},
+  {"type":"text","name":"Skill版本","description":"Skill 版本号"},
+  {"type":"text","name":"报告人","description":"反馈人姓名"},
+  {"type":"select","name":"Agent类型","description":"调用的 Agent","multiple":false,"options":[{"name":"Trae","color":0},{"name":"Doubao","color":1},{"name":"飞书机器人","color":2},{"name":"其他","color":3}],"default_value":["Trae"]},
+  {"type":"text","name":"Prompt摘要","description":"用户 Prompt 摘要"},
+  {"type":"text","name":"问题描述","description":"用户补充的问题描述"},
+  {"type":"select","name":"严重程度","description":"严重程度","multiple":false,"options":[{"name":"轻微","color":0},{"name":"一般","color":1},{"name":"严重","color":2}],"default_value":["一般"]},
+  {"type":"select","name":"状态","description":"Issue 当前状态","multiple":false,"options":[{"name":"待分流","color":0},{"name":"确认Bug","color":1},{"name":"非Bug","color":2},{"name":"待确认","color":3},{"name":"修复中","color":4},{"name":"已修复","color":5}],"default_value":["待分流"]},
+  {"type":"select","name":"AI判定","description":"AI 分流判定结果","multiple":false,"options":[{"name":"确认Bug","color":0},{"name":"非Bug","color":1},{"name":"待确认","color":2}]},
+  {"type":"number","name":"AI置信度","description":"AI 判定置信度 0-100","style":{"type":"plain"}},
+  {"type":"text","name":"AI根因分析","description":"AI 定位的根因"},
+  {"type":"select","name":"复现结果","description":"AI 复现测试结果","multiple":false,"options":[{"name":"已复现","color":0},{"name":"未复现","color":1},{"name":"间歇复现","color":2}]},
+  {"type":"text","name":"多Agent对比","description":"跨 Agent 对比结果"},
+  {"type":"text","name":"修复分支","description":"AI 创建的修复分支名"},
+  {"type":"created_at","name":"创建时间","description":"记录创建时间","style":{"format":"yyyy/MM/dd HH:mm"}}
+]

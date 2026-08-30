@@ -1,0 +1,1765 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillHub+ — AI Skill Issue Triage & Fork Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;560;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   RESET + BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#050506;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  font-feature-settings:'cv01','ss03','zero';
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+/* ============================================================
+   LINEAR STYLE VARIABLES
+   ============================================================ */
+:root{
+  --accent:#ff8c69;
+  --accent-soft:#ffb38a;
+  --pulse-green:#22c55e;
+  --coral-red:#ef4444;
+  --signal-teal:#06b6d4;
+  --amber:#f59e0b;
+
+  --void:#08090a;
+  --carbon:#0f1011;
+  --obsidian:#161718;
+  --graphite:#23252a;
+  --smoke:#383b3f;
+  --ash:#62666d;
+  --fog:#8a8f98;
+  --mist:#d0d6e0;
+  --bone:#e5e5e6;
+  --paper:#ffffff;
+
+  --font-display:'Inter',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+
+  --radius-card:12px;
+  --radius-btn:6px;
+  --radius-pill:9999px;
+
+  --pad-x:72px;
+  --pad-y:56px;
+  --line:var(--graphite);
+}
+
+/* ============================================================
+   CANVAS + CENTERING
+   ============================================================ */
+#canvas{
+  position:fixed;
+  top:50%;
+  left:50%;
+  width:1280px;
+  height:720px;
+  background:var(--void);
+  box-shadow:0 10px 60px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.2);
+  overflow:hidden;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+/* Animated grid background */
+.canvas-bg{
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0;
+  animation:gridShift 20s linear infinite;
+}
+@keyframes gridShift{
+  from{background-position:0 0,0 0}
+  to{background-position:40px 40px,40px 40px}
+}
+
+/* Glow accent */
+.canvas-glow{
+  position:absolute;
+  width:400px;
+  height:400px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,140,105,.04) 0%,transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ============================================================
+   CHROME (inside canvas, position:absolute)
+   ============================================================ */
+.chrome{
+  position:absolute;
+  left:0;
+  right:0;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 var(--pad-x);
+  font-size:11px;
+  color:var(--fog);
+  letter-spacing:.03em;
+  z-index:50;
+  transition:opacity .4s;
+}
+.chrome-top{top:0}
+.chrome-bottom{bottom:0}
+.chrome .ct-left{font-weight:500;color:var(--mist)}
+.chrome .ct-right{font-weight:400}
+.chrome .cb-left{font-weight:400}
+.chrome .cb-right .pn{font-family:var(--font-mono);font-size:11px}
+
+/* ============================================================
+   NAV DOTS
+   ============================================================ */
+.nav-dots{
+  position:absolute;
+  bottom:16px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:8px;
+  z-index:60;
+  transition:opacity .4s;
+}
+.nav-dot{
+  width:6px;
+  height:6px;
+  border-radius:var(--radius-pill);
+  background:var(--smoke);
+  border:none;
+  cursor:pointer;
+  padding:0;
+  transition:background .25s,width .25s;
+}
+.nav-dot.active{
+  background:var(--accent);
+  width:20px;
+}
+
+/* ============================================================
+   SLIDE BASE + TRANSITIONS
+   ============================================================ */
+.slide{
+  position:absolute;
+  inset:0;
+  padding:var(--pad-y) var(--pad-x);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .5s cubic-bezier(.2,.7,.2,1),visibility 0s .5s;
+  z-index:10;
+}
+.slide.active{
+  opacity:1;
+  visibility:visible;
+  transition:opacity .5s cubic-bezier(.2,.7,.2,1),visibility 0s 0s;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.h-display{font-size:72px;font-weight:590;line-height:.96;letter-spacing:-.022em;color:var(--mist)}
+.h-1{font-size:48px;font-weight:590;line-height:1.04;letter-spacing:-.022em;color:var(--mist)}
+.h-2{font-size:32px;font-weight:560;line-height:1.15;letter-spacing:-.015em;color:var(--mist)}
+.h-3{font-size:22px;font-weight:560;line-height:1.25;letter-spacing:-.01em;color:var(--bone)}
+.lead{font-size:18px;font-weight:400;line-height:1.6;color:var(--fog)}
+.body{font-size:16px;font-weight:400;line-height:1.5;color:var(--fog)}
+.kicker{font-size:12px;font-weight:500;line-height:1;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.mono{font-family:var(--font-mono);font-size:13px;font-weight:450;line-height:1.5;color:var(--fog)}
+
+/* ============================================================
+   STAGGER ANIMATIONS
+   ============================================================ */
+.stagger>*{
+  opacity:0;
+  transform:translateY(16px);
+  transition:opacity .6s cubic-bezier(.2,.7,.2,1),transform .6s cubic-bezier(.2,.7,.2,1);
+}
+.slide.active .stagger>*:nth-child(1){transition-delay:.15s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(2){transition-delay:.25s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(3){transition-delay:.35s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(4){transition-delay:.45s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(5){transition-delay:.55s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(6){transition-delay:.65s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(7){transition-delay:.75s;opacity:1;transform:none}
+.slide.active .stagger>*:nth-child(8){transition-delay:.85s;opacity:1;transform:none}
+
+/* ============================================================
+   T01 COVER
+   ============================================================ */
+.s-cover{
+  display:grid;
+  grid-template-rows:1fr auto;
+  gap:0;
+}
+.cover-main{
+  align-self:center;
+}
+.cover-main .kicker{display:block;margin-bottom:24px}
+.cover-chinese{
+  font-size:96px;
+  line-height:.95;
+  font-weight:200;
+  letter-spacing:-.02em;
+  color:var(--paper);
+}
+.cover-chinese span{display:block}
+.cover-sub{
+  margin-top:22px;
+  max-width:72ch;
+  color:var(--fog);
+}
+.cover-meta{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:32px;
+  padding-top:32px;
+  border-top:0.5px solid var(--graphite);
+}
+.cover-meta>div{display:flex;flex-direction:column;gap:8px}
+.cover-meta .meta-label{
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--ash);
+}
+.cover-meta strong{
+  font-size:18px;
+  font-weight:560;
+  color:var(--mist);
+}
+
+/* ============================================================
+   T07 THINK
+   ============================================================ */
+.s-think{
+  display:grid;
+  grid-template-columns:1fr;
+  align-items:center;
+}
+.think-wrap{
+  max-width:1100px;
+  max-height:582px;
+  overflow:hidden;
+}
+.think-kicker{
+  font-size:13px;
+  font-weight:500;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--accent);
+}
+.think-q{
+  margin-top:22px;
+  font-size:64px;
+  font-weight:200;
+  line-height:1.08;
+  letter-spacing:-.02em;
+  color:var(--mist);
+}
+.think-q em{
+  font-style:normal;
+  font-weight:560;
+  color:var(--accent);
+}
+.think-sub{
+  margin-top:26px;
+  font-size:15px;
+  line-height:1.65;
+  max-width:80ch;
+  color:var(--fog);
+}
+.think-note{
+  margin-top:20px;
+  padding:16px 20px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  font-size:14px;
+  color:var(--fog);
+  display:flex;
+  width:fit-content;
+  gap:12px;
+  align-items:center;
+}
+.think-note b{color:var(--mist);font-weight:560}
+
+/* ============================================================
+   T23/T24/T25 FREE LAYOUTS
+   ============================================================ */
+.s-free-single,.s-free-dual,.s-free-triple{
+  grid-template-rows:auto auto;
+  gap:24px;
+  height:100%;
+  align-content:center;
+  display:grid;
+}
+.free-head{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:end;
+  gap:32px;
+}
+.free-head .h-1{font-size:42px;line-height:1.1;margin-top:12px}
+.free-head .lead{max-width:48ch;font-size:15px;align-self:end}
+.free-body{overflow:hidden}
+.free-body.free-cols-2{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:stretch}
+.free-body.free-cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;align-items:stretch}
+.free-col{display:flex;flex-direction:column;gap:14px;min-height:0}
+.free-col>.card{flex:1}
+
+/* ============================================================
+   T06 REFINE LIST
+   ============================================================ */
+.s-refine{
+  display:grid;
+  grid-template-columns:30% 1fr;
+  gap:56px;
+  align-items:center;
+}
+.refine-list{
+  align-content:center;
+  max-height:582px;
+  overflow:hidden;
+}
+.refine-item{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  gap:32px;
+  padding:18px 0;
+  align-items:start;
+  border-bottom:0.5px solid var(--graphite);
+}
+.refine-item .idx{
+  font-size:13px;
+  font-weight:500;
+  padding-top:5px;
+  color:var(--accent);
+  white-space:nowrap;
+}
+.refine-item .h{font-size:22px;font-weight:600;color:var(--mist)}
+.refine-item .d{font-size:13.5px;line-height:1.55;margin-top:6px;max-width:68ch;color:var(--fog)}
+
+/* ============================================================
+   T22 DASHBOARD
+   ============================================================ */
+.s-dashboard{
+  display:grid;
+  grid-template-rows:auto auto 1fr;
+  gap:16px;
+}
+.dash-metrics{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+}
+.dash-metric{
+  padding:16px 18px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+}
+.dm-value{font-size:28px;font-weight:200;letter-spacing:-.02em;color:var(--accent)}
+.dm-label{font-size:11px;margin-top:4px;color:var(--fog)}
+.dash-body{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  min-height:0;
+}
+.dash-chart{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  padding:16px;
+  background:var(--carbon);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:hidden;
+}
+.dash-highlights{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.dash-item{
+  display:grid;
+  grid-template-columns:8px 1fr;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:0.5px solid var(--graphite);
+  align-items:start;
+}
+.dash-dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--accent);
+  margin-top:4px;
+}
+.dash-h{font-size:13px;font-weight:600;color:var(--mist)}
+.dash-d{font-size:12px;color:var(--fog);margin-top:2px}
+
+/* ============================================================
+   T05 TEAM CARDS
+   ============================================================ */
+.s-team{
+  display:grid;
+  grid-template-columns:40% 1fr;
+  gap:77px;
+  align-items:center;
+}
+.team-cards{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  max-height:582px;
+  overflow:hidden;
+  align-content:center;
+}
+.team-card{
+  padding:24px;
+  min-height:168px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+}
+.team-card .idx{font-size:12px;color:var(--accent)}
+.team-card .title{font-size:19px;font-weight:600;color:var(--mist)}
+.team-card .en-sub{font-size:11px;margin-top:4px;color:var(--ash)}
+.team-card .desc{font-size:13px;line-height:1.55;margin-top:auto;color:var(--fog)}
+
+/* ============================================================
+   T08 CLOSING
+   ============================================================ */
+.s-close{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  padding:0;
+  gap:0;
+}
+.close-left{
+  padding:28px 46px 28px 77px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  background:var(--void);
+  position:relative;
+  overflow:hidden;
+}
+.close-left .ascii-bg{
+  position:absolute;
+  inset:0;
+  opacity:.04;
+  pointer-events:none;
+}
+.close-left .chrome-min{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color:var(--fog);
+  position:relative;
+  z-index:1;
+}
+.close-left .manifesto{
+  position:relative;
+  z-index:1;
+}
+.close-left .manifesto .meta{
+  font-size:12px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:16px;
+}
+.close-left .manifesto h2{
+  font-size:56px;
+  font-weight:200;
+  line-height:1.04;
+  letter-spacing:-.02em;
+  color:var(--mist);
+}
+.close-left .manifesto .sub{
+  font-size:14px;
+  margin-top:12px;
+  color:var(--fog);
+}
+.close-left .sig{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color:var(--fog);
+  position:relative;
+  z-index:1;
+}
+.close-right{
+  padding:28px 77px 28px 46px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  background:var(--carbon);
+}
+.close-right .chrome-min{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  color:var(--fog);
+}
+.takeaways{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.take-item{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:24px;
+  padding:20px 0;
+  border-bottom:0.5px solid var(--graphite);
+  align-items:start;
+}
+.take-item:last-child{border-bottom:none}
+.take-item .num{
+  font-size:52px;
+  font-weight:200;
+  color:var(--accent);
+  line-height:1;
+}
+.take-item h3{font-size:20px;font-weight:600;margin-bottom:8px;color:var(--mist)}
+.take-item p{font-size:14px;color:var(--fog);line-height:1.55}
+.close-right .foot{
+  font-size:13px;
+  color:var(--accent);
+  font-weight:500;
+}
+
+/* ============================================================
+   CUSTOM: ARCHITECTURE DIAGRAM (Slide 3)
+   ============================================================ */
+.arch-flow{display:flex;flex-direction:column;gap:20px}
+.arch-main{display:flex;align-items:center;gap:0;justify-content:center}
+.arch-box{
+  flex:1;
+  max-width:200px;
+  padding:18px 16px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.arch-box.arch-highlight{
+  border-color:var(--accent);
+  background:rgba(255,140,105,.04);
+}
+.arch-box .arch-icon{font-size:24px}
+.arch-box .arch-title{font-size:15px;font-weight:600;color:var(--mist)}
+.arch-box .arch-sub{font-size:11px;color:var(--fog);line-height:1.4}
+.arch-arrow{
+  flex:0 0 auto;
+  font-size:18px;
+  color:var(--smoke);
+  padding:0 8px;
+}
+.arch-branch{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  margin-top:8px;
+}
+.arch-branch-line{
+  width:2px;
+  height:24px;
+  background:var(--graphite);
+}
+.arch-verdicts{
+  display:flex;
+  gap:16px;
+  justify-content:center;
+}
+.arch-verdict{
+  padding:14px 20px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  text-align:center;
+  min-width:180px;
+}
+.arch-verdict .verdict-label{font-size:15px;font-weight:600;margin-bottom:4px}
+.arch-verdict .verdict-flow{font-size:11px;color:var(--fog)}
+.arch-verdict.bug{border-color:var(--coral-red)}
+.arch-verdict.bug .verdict-label{color:var(--coral-red)}
+.arch-verdict.nobug{border-color:var(--signal-teal)}
+.arch-verdict.nobug .verdict-label{color:var(--signal-teal)}
+.arch-verdict.pending{border-color:var(--amber)}
+.arch-verdict.pending .verdict-label{color:var(--amber)}
+
+/* ============================================================
+   CUSTOM: IM CARD MOCKUP (Slide 5)
+   ============================================================ */
+.im-storyboard{display:flex;flex-direction:column;gap:12px}
+.im-state-card{
+  padding:14px 16px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.im-state-card .state-badge{
+  font-size:10px;
+  font-weight:600;
+  padding:3px 8px;
+  border-radius:var(--radius-pill);
+  letter-spacing:.03em;
+  white-space:nowrap;
+}
+.im-state-card .state-badge.s1{background:rgba(99,102,241,.15);color:var(--iris-violet)}
+.im-state-card .state-badge.s2{background:rgba(2,184,204,.15);color:var(--signal-teal)}
+.im-state-card .state-badge.s3{background:rgba(39,166,68,.15);color:var(--pulse-green)}
+.im-state-card .state-desc{font-size:12px;color:var(--fog);line-height:1.4}
+
+.im-demo{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--obsidian);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.im-demo-header{
+  padding:10px 16px;
+  border-bottom:0.5px solid var(--graphite);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:11px;
+  color:var(--fog);
+}
+.im-demo-header .bot-avatar{
+  width:24px;
+  height:24px;
+  border-radius:6px;
+  background:var(--accent);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  color:var(--void);
+}
+.im-demo-body{padding:16px;flex:1;display:flex;flex-direction:column;gap:12px}
+.im-bubble{
+  max-width:85%;
+  padding:12px 14px;
+  border:0.5px solid var(--graphite);
+  border-radius:10px;
+  background:var(--carbon);
+  font-size:13px;
+  line-height:1.5;
+  color:var(--mist);
+}
+.im-bubble.bot{border-top-left-radius:4px}
+.im-bubble .bubble-title{font-weight:600;margin-bottom:4px}
+.im-bubble .bubble-sub{font-size:12px;color:var(--fog)}
+.im-form-field{margin-bottom:8px}
+.im-form-field label{font-size:11px;color:var(--fog);display:block;margin-bottom:4px}
+.im-form-field .field-box{
+  padding:6px 10px;
+  border:0.5px solid var(--graphite);
+  border-radius:6px;
+  background:var(--void);
+  font-size:12px;
+  color:var(--mist);
+}
+.im-btn{
+  padding:8px 16px;
+  border:none;
+  border-radius:var(--radius-btn);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .2s;
+}
+.im-btn.primary{background:var(--accent);color:var(--void)}
+.im-btn.primary:hover{background:#ffb38a}
+.im-btn.success{background:var(--pulse-green);color:var(--paper)}
+.im-btn.ghost{background:var(--graphite);color:var(--mist)}
+.im-success-icon{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:var(--pulse-green);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  color:var(--paper);
+  margin-bottom:8px;
+}
+.im-hint{
+  font-size:10px;
+  color:var(--ash);
+  text-align:center;
+  padding:6px;
+  border-top:0.5px solid var(--graphite);
+}
+
+/* ============================================================
+   CUSTOM: DEVELOPER CARD MOCKUP (Slide 6)
+   ============================================================ */
+.dev-card-mock{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--obsidian);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.dev-card-header{
+  padding:12px 16px;
+  border-bottom:0.5px solid var(--graphite);
+  background:rgba(235,87,87,.08);
+}
+.dev-card-header .dc-title{font-size:14px;font-weight:600;color:var(--mist)}
+.dev-card-header .dc-sub{font-size:11px;color:var(--fog);margin-top:2px}
+.dev-card-body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:10px}
+.dc-summary{
+  padding:10px 12px;
+  border-radius:8px;
+  background:var(--carbon);
+  font-size:12px;
+  color:var(--fog);
+  line-height:1.5;
+}
+.dc-summary b{color:var(--mist)}
+.dc-issue{font-size:12px;color:var(--fog);line-height:1.5}
+.dc-issue .dc-issue-title{font-weight:600;color:var(--mist);margin-bottom:4px}
+.dc-issue .dc-meta{font-size:11px;color:var(--ash);margin-top:4px}
+.dc-issue .dc-root{
+  margin-top:6px;
+  padding:8px 10px;
+  border-left:2px solid var(--coral-red);
+  background:var(--void);
+  font-size:11px;
+  color:var(--fog);
+  border-radius:0 4px 4px 0;
+}
+.dc-buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  padding-top:8px;
+}
+.dc-btn{
+  padding:8px 4px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-btn);
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:center;
+  transition:all .2s;
+}
+.dc-btn.primary{background:var(--iris-violet);color:var(--paper);border-color:var(--iris-violet)}
+.dc-btn.primary:hover{background:#7c7ef5}
+.dc-btn.danger{background:transparent;color:var(--coral-red);border-color:var(--coral-red)}
+.dc-btn.danger:hover{background:rgba(235,87,87,.1)}
+.dc-btn.default{background:transparent;color:var(--fog)}
+.dc-btn.default:hover{background:var(--graphite)}
+
+.dev-result-panel{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.dev-result-panel .dr-label{font-size:11px;color:var(--ash);letter-spacing:.04em;text-transform:uppercase}
+.dev-result-panel .dr-state{
+  padding:12px 14px;
+  border:0.5px solid var(--graphite);
+  border-radius:8px;
+  background:var(--obsidian);
+  font-size:13px;
+  color:var(--fog);
+  line-height:1.5;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+}
+.dev-result-panel .dr-state.active{border-color:var(--accent);background:rgba(255,140,105,.04);color:var(--mist)}
+.dev-flow{display:flex;flex-direction:column;gap:8px}
+.dev-flow-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  color:var(--fog);
+  padding:6px 0;
+  border-bottom:0.5px solid var(--graphite);
+}
+.dev-flow-item:last-child{border-bottom:none}
+.dev-flow-item .df-step{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:var(--graphite);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:600;
+  color:var(--mist);
+  flex-shrink:0;
+}
+.dev-flow-item.active .df-step{background:var(--accent);color:var(--void)}
+.dev-flow-item.active{color:var(--mist)}
+
+/* ============================================================
+   CUSTOM: KANBAN + FORK (Slide 7)
+   ============================================================ */
+.kanban-mock{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.kanban-header{
+  padding:8px 12px;
+  border-bottom:0.5px solid var(--graphite);
+  font-size:11px;
+  font-weight:600;
+  color:var(--mist);
+}
+.kanban-cols{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1px;
+  background:var(--graphite);
+  flex:1;
+}
+.kanban-col{
+  background:var(--carbon);
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.kanban-col-title{
+  font-size:10px;
+  font-weight:600;
+  color:var(--fog);
+  margin-bottom:4px;
+}
+.kanban-card{
+  padding:8px 10px;
+  border:0.5px solid var(--graphite);
+  border-radius:6px;
+  background:var(--obsidian);
+  font-size:11px;
+}
+.kanban-card .kc-title{font-weight:600;color:var(--mist);margin-bottom:2px}
+.kanban-card .kc-meta{font-size:9px;color:var(--ash)}
+.kanban-card.bug{border-left:2px solid var(--coral-red)}
+.kanban-card.nobug{border-left:2px solid var(--signal-teal)}
+.kanban-card.pending{border-left:2px solid var(--amber)}
+
+.fork-mock{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.fork-header{
+  padding:8px 12px;
+  border-bottom:0.5px solid var(--graphite);
+  font-size:11px;
+  font-weight:600;
+  color:var(--mist);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.fork-header .fork-badge{
+  font-size:9px;
+  padding:2px 6px;
+  border-radius:var(--radius-pill);
+  background:rgba(255,140,105,.1);
+  color:var(--accent);
+}
+.fork-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:8px}
+.fork-diff-item{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  font-size:11px;
+  color:var(--fog);
+  padding:6px 8px;
+  border-radius:6px;
+  background:var(--obsidian);
+  line-height:1.4;
+}
+.fork-diff-item .diff-line{
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--accent);
+  flex-shrink:0;
+}
+.fork-diff-item .diff-desc{color:var(--fog)}
+.fork-actions{display:flex;gap:8px;margin-top:4px}
+.fork-btn{
+  flex:1;
+  padding:6px;
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-btn);
+  font-size:10px;
+  font-weight:600;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:center;
+}
+.fork-btn.merge{background:var(--pulse-green);color:var(--paper);border-color:var(--pulse-green)}
+.fork-btn.review{background:transparent;color:var(--fog)}
+
+.version-mock{
+  border:0.5px solid var(--graphite);
+  border-radius:var(--radius-card);
+  background:var(--carbon);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.version-header{
+  padding:8px 12px;
+  border-bottom:0.5px solid var(--graphite);
+  font-size:11px;
+  font-weight:600;
+  color:var(--mist);
+}
+.version-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:8px}
+.version-item{
+  padding:8px 10px;
+  border-radius:6px;
+  background:var(--obsidian);
+  font-size:11px;
+}
+.version-item .vi-ver{font-family:var(--font-mono);font-weight:600;color:var(--accent);font-size:12px}
+.version-item .vi-log{font-size:10px;color:var(--fog);margin-top:2px;line-height:1.4}
+.version-item .vi-issue{font-size:9px;color:var(--ash);margin-top:2px}
+
+.interactive-hint{
+  font-size:10px;
+  color:var(--ash);
+  text-align:center;
+  padding:4px;
+  font-style:italic;
+}
+</style>
+</head>
+<body>
+
+<div id="canvas">
+  <!-- Animated background -->
+  <div class="canvas-bg" aria-hidden="true"></div>
+  <div class="canvas-glow" style="top:-100px;left:-100px"></div>
+  <div class="canvas-glow" style="bottom:-100px;right:-100px;background:radial-gradient(circle,rgba(99,102,241,.04) 0%,transparent 70%)"></div>
+
+  <!-- Chrome -->
+  <div class="chrome chrome-top" id="chromeTop">
+    <span class="ct-left">SkillHub+</span>
+    <span class="ct-right">飞书 AI 绝活大会线上黑客松 · 2026</span>
+  </div>
+  <div class="chrome chrome-bottom" id="chromeBottom">
+    <span class="cb-left">yveww · SkillHub+ Presentation</span>
+    <span class="cb-right"><span class="pn" id="pageNum">01 / 10</span></span>
+  </div>
+
+  <!-- Nav dots -->
+  <div class="nav-dots" id="navDots">
+    <button class="nav-dot active" data-i="0"></button>
+    <button class="nav-dot" data-i="1"></button>
+    <button class="nav-dot" data-i="2"></button>
+    <button class="nav-dot" data-i="3"></button>
+    <button class="nav-dot" data-i="4"></button>
+    <button class="nav-dot" data-i="5"></button>
+    <button class="nav-dot" data-i="6"></button>
+    <button class="nav-dot" data-i="7"></button>
+    <button class="nav-dot" data-i="8"></button>
+    <button class="nav-dot" data-i="9"></button>
+  </div>
+
+  <!-- ========================================================
+       SLIDE 1 · COVER
+       ======================================================== -->
+  <section class="slide s-cover active">
+    <div class="cover-main stagger">
+      <span class="kicker">飞书 AI 绝活大会线上黑客松 · 2026</span>
+      <div class="cover-chinese">
+        <span>SkillHub+</span>
+      </div>
+      <p class="cover-sub lead">AI Skill 兼容性诊断平台 — 为飞书生态 Skill 提供类 GitHub 的 Issue 反馈、AI 兼容性诊断、版本管理与 Fork 合并能力</p>
+    </div>
+    <div class="cover-meta stagger">
+      <div><span class="meta-label">Product</span><strong>SkillHub+</strong></div>
+      <div><span class="meta-label">Stack</span><strong>飞书多维表格 · lark-cli</strong></div>
+      <div><span class="meta-label">Status</span><strong>Demo 可运行</strong></div>
+      <div><span class="meta-label">Date</span><strong>2026.08</strong></div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 2 · PROBLEM (T07 Think)
+       ======================================================== -->
+  <section class="slide s-think">
+    <div class="think-wrap stagger">
+      <div class="think-kicker">The Problem · 痛点</div>
+      <div class="think-q">同一个 Skill，<br>不同 Agent 调用，<em>效果天差地别</em>。<br>用户无处反馈，开发者无从知晓。</div>
+      <p class="think-sub">企业自建 Skill 在市场发布后，在不同 Agent 环境、不同使用场景下效果差异巨大。但缺乏类似 GitHub 的 Issue 反馈机制——问题在用户端沉默积累，开发者无法及时感知和修复，最终侵蚀 Skill 质量与用户信任。</p>
+      <div class="think-note"><b>核心矛盾</b><span>Skill 开发者无法获知用户端真实问题，用户也无法有效反馈</span></div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 3 · ARCHITECTURE (T23 Free Single)
+       ======================================================== -->
+  <section class="slide s-free-single">
+    <div class="free-head stagger">
+      <div>
+        <span class="kicker">02 / Solution Overview</span>
+        <h1 class="h-1">兼容性诊断闭环架构</h1>
+      </div>
+      <p class="lead">用户反馈触发 → AI 多环境横测 → 归因定位 + 适配建议，构建 Skill 质量闭环</p>
+    </div>
+    <div class="free-body stagger">
+      <div class="arch-flow">
+        <div class="arch-main">
+          <div class="arch-box">
+            <div class="arch-icon">📝</div>
+            <div class="arch-title">用户反馈表单</div>
+            <div class="arch-sub">飞书多维表格表单<br>零门槛提交</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-box">
+            <div class="arch-icon">📋</div>
+            <div class="arch-title">Issues 表</div>
+            <div class="arch-sub">待诊断 → 状态流转<br>看板可视化管理</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-box arch-highlight">
+            <div class="arch-icon">🤖</div>
+            <div class="arch-title">AI 兼容性诊断</div>
+            <div class="arch-sub">复现 → 多环境横测<br>→ 适配定位 → 归因</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-box">
+            <div class="arch-icon">📨</div>
+            <div class="arch-title">IM 卡片通知</div>
+            <div class="arch-sub">Interactive Card 2.0<br>含适配建议</div>
+          </div>
+        </div>
+        <div class="arch-branch">
+          <div class="arch-branch-line"></div>
+          <div class="arch-verdicts">
+            <div class="arch-verdict bug">
+              <div class="verdict-label">Skill Bug</div>
+              <div class="verdict-flow">→ 创建修复分支 → 版本记录 → Fork 合并</div>
+            </div>
+            <div class="arch-verdict nobug">
+              <div class="verdict-label">环境兼容</div>
+              <div class="verdict-flow">→ 给出平台适配建议<br>开发者按需适配</div>
+            </div>
+            <div class="arch-verdict pending">
+              <div class="verdict-label">使用问题</div>
+              <div class="verdict-flow">→ 使用方式建议<br>附正确 Prompt 示例</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 4 · AI TRIAGE (T06 Refine List)
+       ======================================================== -->
+  <section class="slide s-refine">
+    <div class="stagger">
+      <span class="kicker">03 / Core Mechanism</span>
+      <h1 class="h-1">AI 兼容性诊断四步法</h1>
+      <p class="lead">从 Skill 端出发，多环境横测 + 归因定位 + 适配建议，排查效率提升 10 倍</p>
+    </div>
+    <div class="refine-list stagger">
+      <div class="refine-item">
+        <span class="idx"><b>01</b> · Reproduce</span>
+        <div>
+          <div class="h">问题复现</div>
+          <div class="d">在用户报告的环境中模拟相同 Prompt 重新运行，记录执行日志和异常堆栈，确认可复现性</div>
+        </div>
+      </div>
+      <div class="refine-item">
+        <span class="idx"><b>02</b> · Compatibility Test</span>
+        <div>
+          <div class="h">多环境兼容性横测</div>
+          <div class="d">在 Trae / Doubao / 飞书机器人 / 用户 aily 等多个环境下跑同一个 Skill 用例，生成兼容性矩阵，快速缩小排查范围</div>
+        </div>
+      </div>
+      <div class="refine-item">
+        <span class="idx"><b>03</b> · Adaptation</span>
+        <div>
+          <div class="h">适配定位</div>
+          <div class="d">分析 SKILL.md 和参考文档，定位需要适配的代码段（如缺少某平台工具调用格式、条件分支未覆盖、上下文处理不足）</div>
+        </div>
+      </div>
+      <div class="refine-item">
+        <span class="idx"><b>04</b> · Attribution</span>
+        <div>
+          <div class="h">归因判定</div>
+          <div class="d">综合横测结果和定位分析，输出归因分类和适配建议：Skill Bug / 平台兼容 / 配置问题 / 上下文问题 / 使用问题</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 5 · INTERACTIVE: IM Card 三态 (T24 Free Dual)
+       ======================================================== -->
+  <section class="slide s-free-dual">
+    <div class="free-head stagger">
+      <div>
+        <span class="kicker">04 / UI Showcase</span>
+        <h1 class="h-1">用户反馈 IM 卡片 · 三态流转</h1>
+      </div>
+      <p class="lead">用户在飞书内零门槛提交问题反馈 — 点击右侧卡片按钮体验交互</p>
+    </div>
+    <div class="free-body free-cols-2 stagger">
+      <!-- Left: Storyboard -->
+      <div class="free-col">
+        <div class="im-storyboard">
+          <div class="im-state-card">
+            <span class="state-badge s1">State 1</span>
+            <div class="state-desc"><b style="color:var(--mist)">默认状态</b> — 用户遇到问题时，IM 卡片展示反馈入口</div>
+          </div>
+          <div class="im-state-card">
+            <span class="state-badge s2">State 2</span>
+            <div class="state-desc"><b style="color:var(--mist)">展开反馈</b> — 点击后展开表单，填写标题、Skill、描述、严重程度</div>
+          </div>
+          <div class="im-state-card">
+            <span class="state-badge s3">State 3</span>
+            <div class="state-desc"><b style="color:var(--mist)">提交成功</b> — 提交后显示 Issue ID，引导查看进度</div>
+          </div>
+        </div>
+      </div>
+      <!-- Right: Live Demo -->
+      <div class="free-col">
+        <div class="im-demo" id="imCardDemo">
+          <div class="im-demo-header">
+            <div class="bot-avatar">SG</div>
+            <span>SkillHub+ Bot</span>
+          </div>
+          <div class="im-demo-body">
+            <!-- State 0: Default -->
+            <div class="im-state" data-state="0" style="display:flex;flex-direction:column;gap:10px">
+              <div class="im-bubble bot">
+                <div class="bubble-title">📋 遇到问题？</div>
+                <div class="bubble-sub">使用 Skill 时遇到异常？点击下方按钮提交反馈，AI 将自动分流处理</div>
+              </div>
+              <button class="im-btn primary" data-im-action="next">📝 反馈问题</button>
+            </div>
+            <!-- State 1: Form -->
+            <div class="im-state" data-state="1" style="display:none;flex-direction:column;gap:10px">
+              <div class="im-bubble bot">
+                <div class="bubble-title">填写反馈信息</div>
+                <div class="im-form-field">
+                  <label>标题</label>
+                  <div class="field-box">附件发送失败</div>
+                </div>
+                <div class="im-form-field">
+                  <label>Skill 名称</label>
+                  <div class="field-box">lark-mail · v1.2.0</div>
+                </div>
+                <div class="im-form-field">
+                  <label>问题描述</label>
+                  <div class="field-box">附件显示发送成功，但收件人实际未收到</div>
+                </div>
+                <div class="im-form-field">
+                  <label>严重程度</label>
+                  <div class="field-box" style="color:var(--coral-red)">严重</div>
+                </div>
+              </div>
+              <button class="im-btn primary" data-im-action="next">✓ 提交反馈</button>
+            </div>
+            <!-- State 2: Success -->
+            <div class="im-state" data-state="2" style="display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+              <div class="im-success-icon">✓</div>
+              <div style="font-size:14px;font-weight:600;color:var(--mist)">反馈已提交</div>
+              <div class="mono" style="font-size:12px;color:var(--accent)">ISSUE-00XX 已创建</div>
+              <div class="bubble-sub" style="text-align:center">AI 将自动分流处理，请关注进度更新</div>
+              <button class="im-btn ghost" data-im-action="reset" style="margin-top:8px">再次反馈</button>
+            </div>
+          </div>
+          <div class="im-hint">👆 点击按钮体验三态流转</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 6 · INTERACTIVE: Developer Card (T24 Free Dual)
+       ======================================================== -->
+  <section class="slide s-free-dual">
+    <div class="free-head stagger">
+      <div>
+        <span class="kicker">05 / UI Showcase</span>
+        <h1 class="h-1">开发者分流报告 · 交互卡片</h1>
+      </div>
+      <p class="lead">AI 分流结果以 Interactive Card 2.0 推送 — 开发者在卡片内直接操作 Issue 状态</p>
+    </div>
+    <div class="free-body free-cols-2 stagger">
+      <!-- Left: Interactive Card -->
+      <div class="free-col">
+        <div class="dev-card-mock" id="devCard">
+          <div class="dev-card-header">
+            <div class="dc-title">SkillHub+ AI 分流报告</div>
+            <div class="dc-sub">确认Bug 1 | 非Bug 1 | 待确认 1 · 共 3 个 Issue</div>
+          </div>
+          <div class="dev-card-body">
+            <div class="dc-summary">
+              <b>🐛 附件发送失败</b><br>
+              Skill: lark-mail | Agent: Doubao<br>
+              判定: <b style="color:var(--coral-red)">确认Bug</b> (置信度 89%) · 修复分支: <span class="mono" style="color:var(--accent)">fix/lark-mail-247</span>
+            </div>
+            <div class="dc-issue">
+              <div class="dc-issue-title">根因分析</div>
+              <div class="dc-root">SKILL.md L32 缺少 Doubao Agent 类型判断，工具调用格式不匹配导致附件发送逻辑未触发</div>
+            </div>
+            <div class="dc-buttons">
+              <button class="dc-btn primary" data-dev-action="confirm">确认 Bug</button>
+              <button class="dc-btn danger" data-dev-action="reject">标记误报</button>
+              <button class="dc-btn default" data-dev-action="escalate">转人工</button>
+            </div>
+          </div>
+          <div class="im-hint">👆 点击按钮体验开发者操作</div>
+        </div>
+      </div>
+      <!-- Right: State Panel -->
+      <div class="free-col">
+        <div class="dev-result-panel">
+          <div class="dr-label">操作结果</div>
+          <div class="dr-state" id="devResult">点击左侧卡片按钮，查看 Issue 状态变化</div>
+          <div class="dr-label">交互流程</div>
+          <div class="dev-flow" id="devFlow">
+            <div class="dev-flow-item"><div class="df-step">1</div><span>AI 分流完成，推送 Interactive Card 到开发者飞书</span></div>
+            <div class="dev-flow-item"><div class="df-step">2</div><span>开发者查看根因分析和修复分支</span></div>
+            <div class="dev-flow-item"><div class="df-step">3</div><span>点击按钮操作 Issue 状态（确认/误报/转人工）</span></div>
+            <div class="dev-flow-item"><div class="df-step">4</div><span>状态变更同步到多维表格，触发后续流程</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 7 · INTERACTIVE: Kanban + Fork (T25 Free Triple)
+       ======================================================== -->
+  <section class="slide s-free-triple">
+    <div class="free-head stagger">
+      <div>
+        <span class="kicker">06 / UI Showcase</span>
+        <h1 class="h-1">Issue 看板 · Fork 合并 · 版本管理</h1>
+      </div>
+      <p class="lead">飞书多维表格看板视图 — 问题跟踪、上游 Diff 审阅、版本发布全链路可视</p>
+    </div>
+    <div class="free-body free-cols-3 stagger">
+      <!-- Column 1: Issue Kanban -->
+      <div class="free-col">
+        <div class="kanban-mock">
+          <div class="kanban-header">📋 Issue 看板</div>
+          <div class="kanban-cols">
+            <div class="kanban-col">
+              <div class="kanban-col-title">确认 Bug</div>
+              <div class="kanban-card bug">
+                <div class="kc-title">附件发送失败</div>
+                <div class="kc-meta">lark-mail · Doubao · 89%</div>
+              </div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title">非 Bug / 待确认</div>
+              <div class="kanban-card nobug">
+                <div class="kc-title">文档解析超时</div>
+                <div class="kc-meta">lark-doc · Trae · 91%</div>
+              </div>
+              <div class="kanban-card pending">
+                <div class="kc-title">日历事件重复</div>
+                <div class="kc-meta">lark-cal · 机器人 · 52%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Column 2: Fork Diff -->
+      <div class="free-col">
+        <div class="fork-mock">
+          <div class="fork-header">
+            <span>🔄 Fork 上游 Diff</span>
+            <span class="fork-badge">待合并</span>
+          </div>
+          <div class="fork-body">
+            <div style="font-size:11px;color:var(--fog);margin-bottom:4px">
+              <b style="color:var(--mist)">lark-mail-custom</b> 基于 v1.2.0<br>
+              上游已更新到 <span class="mono" style="color:var(--accent)">v1.2.1</span>
+            </div>
+            <div class="fork-diff-item">
+              <span class="diff-line">L32</span>
+              <span class="diff-desc">新增 Agent 类型判断（Doubao 调用路径）</span>
+            </div>
+            <div class="fork-diff-item">
+              <span class="diff-line">L45</span>
+              <span class="diff-desc">优化附件处理逻辑，修复发送失败问题</span>
+            </div>
+            <div class="fork-diff-item">
+              <span class="diff-line">M18</span>
+              <span class="diff-desc">references/mail.md 修复示例代码</span>
+            </div>
+            <div class="fork-actions">
+              <button class="fork-btn merge">全部合并</button>
+              <button class="fork-btn review">逐条审阅</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Column 3: Version Records -->
+      <div class="free-col">
+        <div class="version-mock">
+          <div class="version-header">📦 版本管理</div>
+          <div class="version-body">
+            <div class="version-item">
+              <div class="vi-ver">v1.2.1-fix</div>
+              <div class="vi-log">修复 Doubao Agent 附件发送失败，补充 Agent 类型判断</div>
+              <div class="vi-issue">修复 ISSUE-00XX · 已发布</div>
+            </div>
+            <div class="version-item">
+              <div class="vi-ver">v1.2.0</div>
+              <div class="vi-log">基线版本 — 附件发送、正文编辑、多收件人支持</div>
+              <div class="vi-issue">已发布 · 2026.08</div>
+            </div>
+            <div class="version-item">
+              <div class="vi-ver">v1.2.0-custom</div>
+              <div class="vi-log">Fork 版本 — 增加附件大小限制检查</div>
+              <div class="vi-issue">Fork · 待合并上游</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 8 · DEMO DASHBOARD (T22 Dashboard)
+       ======================================================== -->
+  <section class="slide s-dashboard">
+    <div class="free-head stagger" style="display:grid;grid-template-columns:auto 1fr;align-items:end;gap:32px">
+      <div>
+        <span class="kicker">07 / Demo & Data</span>
+        <h1 class="h-1" style="font-size:42px;line-height:1.1;margin-top:12px">端到端流程与数据</h1>
+      </div>
+      <p class="lead" style="max-width:48ch;font-size:15px;align-self:end">5 步 Demo 全链路可运行 — 从 Issue 插入到 IM 卡片通知</p>
+    </div>
+    <div class="dash-metrics stagger">
+      <div class="dash-metric">
+        <span class="dm-value">3</span>
+        <span class="dm-label">Issues 插入</span>
+      </div>
+      <div class="dash-metric">
+        <span class="dm-value">3</span>
+        <span class="dm-label">AI 分流完成</span>
+      </div>
+      <div class="dash-metric">
+        <span class="dm-value">1</span>
+        <span class="dm-label">修复版本创建</span>
+      </div>
+      <div class="dash-metric">
+        <span class="dm-value">1</span>
+        <span class="dm-label">Fork 记录</span>
+      </div>
+      <div class="dash-metric">
+        <span class="dm-value">1</span>
+        <span class="dm-label">IM 卡片发送</span>
+      </div>
+    </div>
+    <div class="dash-body stagger">
+      <div class="dash-chart">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:11px;color:var(--fog)">AI 分流结果分布</span>
+        </div>
+        <svg viewBox="0 0 400 140" preserveAspectRatio="xMidYMid meet" style="width:100%;flex:1">
+          <!-- Donut chart -->
+          <circle cx="80" cy="70" r="48" fill="none" stroke="var(--graphite)" stroke-width="12"/>
+          <!-- Confirmed Bug (120deg = 1/3) -->
+          <circle cx="80" cy="70" r="48" fill="none" stroke="var(--coral-red)" stroke-width="12"
+            stroke-dasharray="100.5 301.6" stroke-dashoffset="0" transform="rotate(-90 80 70)"
+            style="transition:stroke-dasharray 1s ease"/>
+          <!-- Non-Bug (120deg = 1/3) -->
+          <circle cx="80" cy="70" r="48" fill="none" stroke="var(--signal-teal)" stroke-width="12"
+            stroke-dasharray="100.5 301.6" stroke-dashoffset="-100.5" transform="rotate(-90 80 70)"
+            style="transition:stroke-dasharray 1s ease"/>
+          <!-- Pending (120deg = 1/3) -->
+          <circle cx="80" cy="70" r="48" fill="none" stroke="var(--amber)" stroke-width="12"
+            stroke-dasharray="100.5 301.6" stroke-dashoffset="-201" transform="rotate(-90 80 70)"
+            style="transition:stroke-dasharray 1s ease"/>
+          <text x="80" y="68" text-anchor="middle" font-size="24" font-weight="200" fill="var(--mist)">3</text>
+          <text x="80" y="84" text-anchor="middle" font-size="10" fill="var(--fog)">Issues</text>
+          <!-- Legend -->
+          <rect x="170" y="28" width="10" height="10" rx="2" fill="var(--coral-red)"/>
+          <text x="186" y="37" font-size="11" fill="var(--fog)">确认 Bug · 1 个 (33%)</text>
+          <rect x="170" y="56" width="10" height="10" rx="2" fill="var(--signal-teal)"/>
+          <text x="186" y="65" font-size="11" fill="var(--fog)">非 Bug · 1 个 (33%)</text>
+          <rect x="170" y="84" width="10" height="10" rx="2" fill="var(--amber)"/>
+          <text x="186" y="93" font-size="11" fill="var(--fog)">待确认 · 1 个 (33%)</text>
+          <!-- Confidence range -->
+          <text x="170" y="118" font-size="10" fill="var(--ash)">置信度范围: 52% – 91%</text>
+        </svg>
+      </div>
+      <div class="dash-highlights">
+        <div class="dash-item">
+          <span class="dash-dot"></span>
+          <div>
+            <div class="dash-h">端到端可运行 Demo</div>
+            <div class="dash-d">python demo.py 一键体验 5 步全流程</div>
+          </div>
+        </div>
+        <div class="dash-item">
+          <span class="dash-dot"></span>
+          <div>
+            <div class="dash-h">飞书多维表格三表联动</div>
+            <div class="dash-d">Issues / Versions / Forks 数据互通</div>
+          </div>
+        </div>
+        <div class="dash-item">
+          <span class="dash-dot"></span>
+          <div>
+            <div class="dash-h">Interactive Card 2.0 交互</div>
+            <div class="dash-d">开发者卡片内直接操作 Issue 状态</div>
+          </div>
+        </div>
+        <div class="dash-item">
+          <span class="dash-dot"></span>
+          <div>
+            <div class="dash-h">测试覆盖 9 个模块</div>
+            <div class="dash-d">5 通过 · 3 部分通过 · 1 失败已修复</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 9 · TECH INNOVATION (T05 Team Cards)
+       ======================================================== -->
+  <section class="slide s-team">
+    <div class="stagger">
+      <span class="kicker">08 / Tech Innovation</span>
+      <h1 class="h-1">四大技术创新</h1>
+      <p class="lead">飞书生态深度融合 — 多维表格为底座，AI 为引擎，交互卡片为触点</p>
+    </div>
+    <div class="team-cards stagger">
+      <div class="team-card">
+        <span class="idx">— 01</span>
+        <div class="title">飞书多维表格为数据底座</div>
+        <div class="en-sub">Feishu Base as Data Layer</div>
+        <div class="desc">Issues / Versions / Forks 三表联动，看板视图可视化管理，表单收集用户反馈，无需自建数据库</div>
+      </div>
+      <div class="team-card">
+        <span class="idx">— 02</span>
+        <div class="title">lark-cli 全链路 API</div>
+        <div class="en-sub">End-to-End API Integration</div>
+        <div class="desc">表格 CRUD + 记录批量操作 + IM 消息发送 + 表单管理，通过 lark-cli 实现飞书原生 API 全链路交互</div>
+      </div>
+      <div class="team-card">
+        <span class="idx">— 03</span>
+        <div class="title">AI 智能分流引擎</div>
+        <div class="en-sub">AI Triage Engine</div>
+        <div class="desc">复现测试 → 多 Agent 对比 → 根因定位 → 智能判定，自动区分真 Bug 与使用问题，降低开发者 triage 负担</div>
+      </div>
+      <div class="team-card">
+        <span class="idx">— 04</span>
+        <div class="title">Interactive Card 2.0</div>
+        <div class="en-sub">Developer Interaction Layer</div>
+        <div class="desc">分流结果以交互卡片推送，开发者直接在飞书内确认 Bug / 标记误报 / 转人工，状态变更实时同步</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       SLIDE 10 · CLOSING (T08)
+       ======================================================== -->
+  <section class="slide s-close">
+    <div class="close-left">
+      <canvas class="ascii-bg" id="asciiBg"></canvas>
+      <div class="chrome-min"><span>10 / 10</span><span>Closing</span></div>
+      <div class="manifesto stagger">
+        <div class="meta">SkillHub+ · 2026</div>
+        <h2>让每个 Skill<br>都有反馈窗口，<br>让每个 Bug<br>都能被看见。</h2>
+        <div class="sub">类 GitHub 的 Issue / Fork 机制，AI 智能分流，飞书原生交互 — 构建飞书 Skill 生态的质量闭环</div>
+      </div>
+      <div class="sig"><span>SkillHub+ Team</span><span>2026.08.29</span></div>
+    </div>
+    <div class="close-right">
+      <div class="chrome-min"><span>Takeaways</span><span>03 Points</span></div>
+      <div class="takeaways stagger">
+        <div class="take-item">
+          <div class="num">01</div>
+          <div>
+            <h3>填补飞书 Skill 质量管理空白</h3>
+            <p>类 GitHub 的 Issue 反馈 + Fork 合并机制，让企业自建 Skill 拥有用户反馈窗口和版本管理能力</p>
+          </div>
+        </div>
+        <div class="take-item">
+          <div class="num">02</div>
+          <div>
+            <h3>AI 智能分流降低开发者负担</h3>
+            <p>自动复现、多 Agent 对比、根因定位，精准区分真 Bug 与使用问题，开发者只需关注确认的 Issue</p>
+          </div>
+        </div>
+        <div class="take-item">
+          <div class="num">03</div>
+          <div>
+            <h3>飞书原生交互全链路闭环</h3>
+            <p>表单收集 → 多维表格管理 → AI 分流 → Interactive Card 通知 → Fork 合并，全程飞书内完成</p>
+          </div>
+        </div>
+      </div>
+      <div class="foot">→ 体验 Demo: python demo.py</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  /* ========================================================
+     CANVAS SCALING
+     ======================================================== */
+  var canvas=document.getElementById('canvas');
+  function scaleCanvas(){
+    var s=Math.min(window.innerWidth/1280,window.innerHeight/720);
+    canvas.style.transform='translate(-50%,-50%) scale('+s+')';
+  }
+  window.addEventListener('resize',scaleCanvas);
+  scaleCanvas();
+
+  /* ========================================================
+     SLIDE NAVIGATION
+     ======================================================== */
+  var slides=document.querySelectorAll('.slide');
+  var dots=document.querySelectorAll('.nav-dot');
+  var chromeTop=document.getElementById('chromeTop');
+  var chromeBottom=document.getElementById('chromeBottom');
+  var navDots=document.getElementById('navDots');
+  var pageNum=document.getElementById('pageNum');
+  var total=slides.length;
+  var current=0;
+
+  function goTo(index){
+    if(index<0||index>=total||index===current)return;
+    slides[current].classList.remove('active');
+    dots[current].classList.remove('active');
+    current=index;
+    slides[current].classList.add('active');
+    dots[current].classList.add('active');
+    // Hide chrome on closing slide
+    if(slides[current].classList.contains('s-close')){
+      chromeTop.style.opacity='0';
+      chromeBottom.style.opacity='0';
+      navDots.style.opacity='0';
+    }else{
+      chromeTop.style.opacity='';
+      chromeBottom.style.opacity='';
+      navDots.style.opacity='';
+    }
+    pageNum.textContent=String(current+1).padStart(2,'0')+' / '+String(total).padStart(2,'0');
+  }
+
+  /* Keyboard */
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){
+      e.preventDefault();goTo(current+1);
+    }else if(e.key==='ArrowLeft'||e.key==='PageUp'){
+      e.preventDefault();goTo(current-1);
+    }else if(e.key==='Home'){
+      e.preventDefault();goTo(0);
+    }else if(e.key==='End'){
+      e.preventDefault();goTo(total-1);
+    }
+  });
+
+  /* Wheel (debounced) */
+  var wheelLock=false;
+  document.addEventListener('wheel',function(e){
+    if(wheelLock)return;
+    wheelLock=true;
+    setTimeout(function(){wheelLock=false;},600);
+    if(e.deltaY>30)goTo(current+1);
+    else if(e.deltaY<-30)goTo(current-1);
+  },{passive:true});
+
+  /* Touch */
+  var touchStartY=0;
+  document.addEventListener('touchstart',function(e){
+    touchStartY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    var dy=touchStartY-e.changedTouches[0].clientY;
+    if(Math.abs(dy)>50){
+      if(dy>0)goTo(current+1);
+      else goTo(current-1);
+    }
+  },{passive:true});
+
+  /* Dots */
+  dots.forEach(function(dot,i){
+    dot.addEventListener('click',function(){goTo(i);});
+  });
+
+  /* ========================================================
+     INTERACTIVE: IM Card 三态 (Slide 5)
+     ======================================================== */
+  var imDemo=document.getElementById('imCardDemo');
+  if(imDemo){
+    var imStates=imDemo.querySelectorAll('.im-state');
+    var imState=0;
+    function showImState(s){
+      if(s<0||s>=imStates.length)return;
+      imStates.forEach(function(el,i){
+        el.style.display=i===s?'flex':'none';
+      });
+      imState=s;
+    }
+    imDemo.querySelectorAll('[data-im-action]').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var action=btn.getAttribute('data-im-action');
+        if(action==='next')showImState(imState+1);
+        else if(action==='reset')showImState(0);
+      });
+    });
+    showImState(0);
+  }
+
+  /* ========================================================
+     INTERACTIVE: Developer Card (Slide 6)
+     ======================================================== */
+  var devCard=document.getElementById('devCard');
+  if(devCard){
+    var devResult=document.getElementById('devResult');
+    var devFlowItems=document.querySelectorAll('#devFlow .dev-flow-item');
+    var messages={
+      'confirm':'✓ 已确认 Bug\nIssue 状态更新为「修复中」，修复分支 fix/lark-mail-247 已创建',
+      'reject':'✓ 已标记误报\nIssue 状态更新为「已关闭」，AI 判定已修正',
+      'escalate':'✓ 已转人工\nIssue 已分配给质量团队进行人工复核'
+    };
+    devCard.querySelectorAll('[data-dev-action]').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var action=btn.getAttribute('data-dev-action');
+        devResult.textContent=messages[action];
+        devResult.classList.add('active');
+        // Activate flow step 3
+        devFlowItems.forEach(function(item,i){
+          if(i<=2)item.classList.add('active');
+        });
+      });
+    });
+  }
+
+  /* ========================================================
+     ASCII BACKGROUND (Closing Slide)
+     ======================================================== */
+  var asciiCanvas=document.getElementById('asciiBg');
+  if(asciiCanvas){
+    var ctx=asciiCanvas.getContext('2d');
+    function resizeAscii(){
+      asciiCanvas.width=asciiCanvas.offsetWidth;
+      asciiCanvas.height=asciiCanvas.offsetHeight;
+    }
+    resizeAscii();
+    window.addEventListener('resize',resizeAscii);
+    var chars='01·+-=/#';
+    var cols=[];
+    var colCount=0;
+    function initCols(){
+      colCount=Math.ceil(asciiCanvas.width/8);
+      cols=[];
+      for(var i=0;i<colCount;i++){
+        cols.push({
+          y:Math.random()*asciiCanvas.height,
+          speed:1+Math.random()*2,
+          chars:[]
+        });
+      }
+    }
+    initCols();
+    function drawAscii(){
+      ctx.fillStyle='rgba(8,9,10,0.08)';
+      ctx.fillRect(0,0,asciiCanvas.width,asciiCanvas.height);
+      ctx.font='12px JetBrains Mono, monospace';
+      ctx.fillStyle='#ff8c69';
+      for(var i=0;i<cols.length;i++){
+        var col=cols[i];
+        var x=i*8;
+        if(Math.random()>0.95){
+          col.chars.push(chars[Math.floor(Math.random()*chars.length)]);
+        }
+        for(var j=0;j<col.chars.length;j++){
+          var y=col.y-j*14;
+          if(y<0||y>asciiCanvas.height)continue;
+          ctx.globalAlpha=Math.max(0,1-j*0.15);
+          ctx.fillText(col.chars[j],x,y);
+        }
+        col.y+=col.speed;
+        if(col.y>asciiCanvas.height+100){
+          col.y=-50;
+          col.chars=[];
+        }
+        if(col.chars.length>20)col.chars.shift();
+      }
+      ctx.globalAlpha=1;
+      requestAnimationFrame(drawAscii);
+    }
+    drawAscii();
+  }
+
+})();
+</script>
+</body>
+</html>

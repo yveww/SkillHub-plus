@@ -1,0 +1,11 @@
+[
+  {"type":"text","name":"Fork名称","description":"Fork 的名称"},
+  {"type":"text","name":"原版Skill","description":"原版 Skill 名称"},
+  {"type":"text","name":"原版版本","description":"Fork 时的原版版本号"},
+  {"type":"text","name":"Fork版本","description":"Fork 自定义版本号"},
+  {"type":"text","name":"自定义修改","description":"用户自定义修改内容摘要"},
+  {"type":"text","name":"上游版本","description":"上游最新版本号"},
+  {"type":"text","name":"Diff摘要","description":"上游 Diff 变更摘要"},
+  {"type":"select","name":"合并状态","description":"上游合并状态","multiple":false,"options":[{"name":"待合并","color":0},{"name":"已合并","color":1},{"name":"暂不合并","color":2}],"default_value":["待合并"]},
+  {"type":"created_at","name":"创建时间","description":"创建时间","style":{"format":"yyyy/MM/dd HH:mm"}}
+]

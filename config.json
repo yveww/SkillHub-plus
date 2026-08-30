@@ -1,0 +1,18 @@
+{
+    "base_token": "CnTPbWGmvabJ11sQpCRcSmTGnMf",
+    "base_url": "https://my.feishu.cn/base/CnTPbWGmvabJ11sQpCRcSmTGnMf",
+    "tables": {
+        "issues": "tbljUJPGjq4nx1Yk",
+        "versions": "tblW9GHElUZHu3R5",
+        "forks": "tbllqMBY8Nl7WUWU"
+    },
+    "views": {
+        "issues_default": "vewszFCHcO",
+        "versions_default": "vewbO6islk",
+        "forks_default": "vewbzzlTI5",
+        "issues_kanban": "vewMtrSVvy"
+    },
+    "forms": {
+        "issues_feedback": "vewf9zgFg0"
+    }
+}

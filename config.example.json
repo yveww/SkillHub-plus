@@ -1,0 +1,18 @@
+{
+    "base_token": "YOUR_BASE_TOKEN",
+    "base_url": "https://your-domain.feishu.cn/base/YOUR_BASE_TOKEN",
+    "tables": {
+        "issues": "YOUR_ISSUES_TABLE_ID",
+        "versions": "YOUR_VERSIONS_TABLE_ID",
+        "forks": "YOUR_FORKS_TABLE_ID"
+    },
+    "views": {
+        "issues_default": "YOUR_ISSUES_DEFAULT_VIEW_ID",
+        "versions_default": "YOUR_VERSIONS_DEFAULT_VIEW_ID",
+        "forks_default": "YOUR_FORKS_DEFAULT_VIEW_ID",
+        "issues_kanban": "YOUR_ISSUES_KANBAN_VIEW_ID"
+    },
+    "forms": {
+        "issues_feedback": "YOUR_FEEDBACK_FORM_ID"
+    }
+}
