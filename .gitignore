@@ -23,3 +23,6 @@ desktop.ini
 
 # Trae
 .trae/
+
+# Sensitive config (contains real Feishu Base tokens)
+config.json

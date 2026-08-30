@@ -177,7 +177,7 @@ python fork_merge.py
 > 以下是我们演示用的飞书 Base 链接，你可以替换为你自己的：
 
 ```
-https://my.feishu.cn/base/CnTPbWGmvabJ11sQpCRcSmTGnMf
+https://your-domain.feishu.cn/base/YOUR_BASE_TOKEN
 ```
 
 ## 作者

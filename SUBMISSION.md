@@ -221,7 +221,7 @@ lark-cli auth status
 
 ```bash
 # 列出当前 Base 的表结构（确认权限正常）
-lark-cli base +tables-list --base-token CnTPbWGmvabJ11sQpCRcSmTGnMf --as user --format json
+lark-cli base +tables-list --base-token YOUR_BASE_TOKEN --as user --format json
 ```
 
 应返回 3 张表（Issues / Versions / Forks）的元数据。
@@ -232,8 +232,8 @@ lark-cli base +tables-list --base-token CnTPbWGmvabJ11sQpCRcSmTGnMf --as user --
 
 ```json
 {
-    "base_token": "CnTPbWGmvabJ11sQpCRcSmTGnMf",
-    "base_url": "https://my.feishu.cn/base/CnTPbWGmvabJ11sQpCRcSmTGnMf",
+    "base_token": "YOUR_BASE_TOKEN",
+    "base_url": "https://your-domain.feishu.cn/base/YOUR_BASE_TOKEN",
     "tables": { "issues": "...", "versions": "...", "forks": "..." },
     "views": { "issues_kanban": "..." },
     "forms": { "issues_feedback": "..." }
@@ -282,7 +282,7 @@ python fork_merge.py
 
 打开飞书多维表格，即可看到完整 Demo 数据：
 
-> **Base 链接**：https://my.feishu.cn/base/CnTPbWGmvabJ11sQpCRcSmTGnMf
+> **Base 链接**：https://your-domain.feishu.cn/base/YOUR_BASE_TOKEN
 
 | 表 | 内容 | 重点看 |
 |----|------|--------|
