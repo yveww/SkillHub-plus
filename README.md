@@ -87,17 +87,62 @@
 
 ## 快速开始
 
+### 前置条件
+
+1. **Python 3.8+**
+2. **lark-cli** — 飞书命令行工具，用于通过 API 操作多维表格和发送 IM
+   ```bash
+   # 安装
+   npm install -g @lark-sdk/lark-cli
+
+   # 认证（首次使用需要登录飞书账号）
+   lark-cli auth login
+   ```
+3. **飞书多维表格（Base）** — 需要一个飞书 Base 作为数据存储
+   - 在飞书中新建一个多维表格
+   - 复制 Base URL（形如 `https://你的域名.feishu.cn/base/xxxxxxxx`）
+   - 运行 `setup_views.py` 会自动创建 Issues / Versions / Forks 三张表 + 看板视图 + 反馈表单
+
+### 配置
+
+将 `config.example.json` 复制为 `config.json`，替换为你自己的飞书 Base 信息：
+
+```json
+{
+    "base_token": "YOUR_BASE_TOKEN",          // Base URL 中 /base/ 后面的部分
+    "base_url": "https://xxx.feishu.cn/base/YOUR_BASE_TOKEN",
+    "tables": {
+        "issues": "YOUR_ISSUES_TABLE_ID",     // 运行 setup_views.py 后自动生成
+        "versions": "YOUR_VERSIONS_TABLE_ID",
+        "forks": "YOUR_FORKS_TABLE_ID"
+    },
+    "views": {
+        "issues_default": "YOUR_VIEW_ID",     // 运行 setup_views.py 后自动生成
+        "versions_default": "YOUR_VIEW_ID",
+        "forks_default": "YOUR_VIEW_ID",
+        "issues_kanban": "YOUR_VIEW_ID"
+    },
+    "forms": {
+        "issues_feedback": "YOUR_FORM_ID"    // 运行 setup_views.py 后自动生成
+    }
+}
+```
+
+> **提示**：`tables`、`views`、`forms` 中的 ID 会在首次运行 `setup_views.py` 时自动创建并写入 `config.json`，你不需要手动填写这些值。只需先填入 `base_token` 和 `base_url` 即可。
+
+### 运行
+
 ```bash
-# 1. 确保已安装 lark-cli 并完成认证
+# 1. 确保已认证
 lark-cli auth status
 
-# 2. 配置看板视图和表单（只需运行一次）
+# 2. 初始化表格结构和视图（只需运行一次）
 python setup_views.py
 
-# 3. 运行主 Demo
+# 3. 运行主 Demo（6 步端到端流程）
 python demo.py
 
-# 4. 运行 Fork 合并演示
+# 4. 运行 Fork 合并演示（独立运行）
 python fork_merge.py
 ```
 
@@ -127,5 +172,14 @@ python fork_merge.py
 - 归因统计（Skill Bug / 平台兼容 / 使用问题 / 待确认）
 - 每个 Issue 的归因分类、适配建议、修复分支
 
-## Base 链接
+## Demo Base 链接
+
+> 以下是我们演示用的飞书 Base 链接，你可以替换为你自己的：
+
+```
 https://my.feishu.cn/base/CnTPbWGmvabJ11sQpCRcSmTGnMf
+```
+
+## 作者
+
+**yveww** — 飞书 AI 绝活大会线上黑客松参赛项目
